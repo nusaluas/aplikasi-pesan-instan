@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Chat Privat</title>
+    
+    <!-- PWA Manifest (Inline) -->
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQXBsaWthc2kgQ2hhdCBQcml2YXQiLCJzaG9ydF9uYW1lIjoiQ2hhdCBQcml2YXQiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI2YxZjVmOSIsInRoZW1lX2NvbG9yIjoiIzFlMjkzYiIsImRlc2NyaXB0aW9uIjoiQXBsaWthc2kgY2hhdCBwcml2YXQgZGVuZ2FuIHZlcmlmaWthc2kgYWRtaW4uIiwiaWNvbnMiOlt7InNyYyI6Imh0dHBzOi8vcGxhY2Vob2xkLmNvLzE5MngxOTIvMWUyOTNiL2ZmZmZmZj90ZXh0PUNoYXQiLCJzaXplcyI6IjE5MngxOTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIiwicHVycG9zZSI6ImFueSBtYXNrYWJsZSJ9LHsic3JjIjoiaHR0cHM6Ly9wbGFjZWhvbGQuY28vNTEyeDUxMi8xZTI5M2IvZmZmZmZmP3RleHQ9Q2hhdCIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmciLCJwdXJwb3NlIjoiYW55IG1hc2thYmxlIn1dfQ==">
+    <meta name="theme-color" content="#1e293b">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-scrollbar::-webkit-scrollbar { width: 5px; }
+        .sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        #messages::-webkit-scrollbar { width: 8px; }
+        #messages::-webkit-scrollbar-track { background: #f1f5f9; }
+        #messages::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 2px solid #f1f5f9; }
+        .hidden { display: none; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100">
+
+    <!-- MODALS -->
+    <!-- Modal untuk memasukkan nama pengguna -->
+    <div id="nicknameModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-11/12 max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-4 text-slate-800">Selamat Datang!</h2>
+            <p class="text-slate-600 mb-6">Masukkan nama Anda untuk memulai.</p>
+            <form id="nicknameForm">
+                <input id="nicknameInput" type="text" placeholder="Nama Anda..." required class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-500 focus:outline-none transition duration-200 mb-4">
+                <button type="submit" class="w-full bg-slate-700 text-white font-semibold py-3 rounded-xl hover:bg-slate-800 active:scale-95 transition">Simpan Nama</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal untuk pengguna yang belum terverifikasi -->
+    <div id="verificationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 backdrop-blur-sm hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-11/12 max-w-md text-center">
+            <h2 class="text-2xl font-bold mb-4 text-slate-800">Menunggu Verifikasi</h2>
+            <p class="text-slate-600 mb-6">Akun Anda belum diverifikasi oleh Admin. Silakan berikan ID Pengguna Anda di bawah ini kepada Admin untuk mendapatkan akses.</p>
+            <div class="bg-slate-100 p-4 rounded-lg">
+                <p class="text-sm text-slate-500">ID Pengguna Anda:</p>
+                <p id="myUserId" class="text-lg font-mono text-slate-700 break-all">Memuat...</p>
+            </div>
+             <button id="copyIdButton" class="mt-6 w-full bg-slate-700 text-white font-semibold py-3 rounded-xl hover:bg-slate-800 active:scale-95 transition">Salin ID</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="appContainer" class="w-full h-screen flex hidden">
+        <!-- Sidebar (User List & Admin Panel) -->
+        <aside class="w-1/3 max-w-xs bg-slate-50 border-r border-slate-200 flex flex-col">
+            <header class="p-4 border-b border-slate-200">
+                <h2 class="font-bold text-lg text-slate-800">Kontak</h2>
+                <p class="text-xs text-slate-500">Masuk sebagai: <span id="usernameDisplay" class="font-semibold"></span></p>
+            </header>
+            <div id="userList" class="flex-1 overflow-y-auto sidebar-scrollbar">
+                <!-- Daftar pengguna akan muncul di sini -->
+            </div>
+            <!-- Admin Panel -->
+            <div id="adminPanel" class="p-4 border-t border-slate-200 hidden">
+                <h3 class="font-bold text-md text-slate-700 mb-2">Panel Admin</h3>
+                <div id="verificationList" class="space-y-2 max-h-48 overflow-y-auto sidebar-scrollbar">
+                    <!-- Daftar user yang butuh verifikasi -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Chat Area -->
+        <main class="w-2/3 flex-1 flex flex-col bg-slate-100">
+            <div id="chatWelcome" class="flex flex-col items-center justify-center h-full text-slate-500">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                <h2 class="text-2xl font-bold">Selamat Datang!</h2>
+                <p>Pilih kontak di sebelah kiri untuk memulai percakapan.</p>
+            </div>
+            <div id="chatArea" class="flex flex-col h-full hidden">
+                <header class="bg-white p-4 border-b border-slate-200">
+                    <h2 id="chattingWith" class="font-bold text-lg text-slate-800"></h2>
+                </header>
+                <div id="messages" class="flex-1 p-6 overflow-y-auto space-y-4">
+                    <!-- Pesan akan ditampilkan di sini -->
+                </div>
+                <footer class="p-4 bg-white border-t border-slate-200">
+                    <form id="messageForm" class="flex items-center space-x-3">
+                        <input id="messageInput" type="text" placeholder="Ketik pesan pribadi..." autocomplete="off" class="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-500 focus:outline-none transition">
+                        <button type="submit" class="bg-slate-700 text-white font-semibold px-6 py-3 rounded-xl hover:bg-slate-800 active:scale-95 transition flex items-center">
+                            <span>Kirim</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                        </button>
+                    </form>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        // Kode JavaScript Firebase Anda (sama seperti sebelumnya)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIG & INITIALIZATION ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- DOM ELEMENTS ---
+        const nicknameModal = document.getElementById('nicknameModal');
+        const verificationModal = document.getElementById('verificationModal');
+        const appContainer = document.getElementById('appContainer');
+        const nicknameForm = document.getElementById('nicknameForm');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const myUserId = document.getElementById('myUserId');
+        const copyIdButton = document.getElementById('copyIdButton');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const userList = document.getElementById('userList');
+        const adminPanel = document.getElementById('adminPanel');
+        const verificationList = document.getElementById('verificationList');
+        const chatWelcome = document.getElementById('chatWelcome');
+        const chatArea = document.getElementById('chatArea');
+        const chattingWith = document.getElementById('chattingWith');
+        const messages = document.getElementById('messages');
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+
+        // --- APP STATE ---
+        let currentUser = null;
+        let currentChatRoomId = null;
+        let unsubscribeMessages = null;
+
+        // --- FIRESTORE PATHS (v2 for reset & permission fix) ---
+        const configColPath = `artifacts/${appId}/public/data/config_v2`;
+        const usersColPath = `artifacts/${appId}/public/data/users_v2`;
+        const chatRoomsColPath = `artifacts/${appId}/public/data/chatRooms_v2`;
+
+        const configDocRef = (docId) => doc(db, configColPath, docId);
+        const usersColRef = collection(db, usersColPath);
+        const userDocRef = (userId) => doc(usersColRef, userId);
+        const chatRoomsColRef = collection(db, chatRoomsColPath);
+
+        // --- AUTHENTICATION & USER SETUP ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                myUserId.textContent = user.uid;
+                await checkAdmin(user.uid);
+                await setupUser(user.uid);
+            } else {
+                try {
+                    initialAuthToken ? await signInWithCustomToken(auth, initialAuthToken) : await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                }
+            }
+        });
+
+        async function checkAdmin(uid) {
+            const adminDocRef = configDocRef('admin');
+            const docSnap = await getDoc(adminDocRef);
+            if (!docSnap.exists()) {
+                await setDoc(adminDocRef, { adminUid: uid });
+                console.log('Admin has been reset and set to:', uid);
+            }
+        }
+
+        async function setupUser(uid) {
+            const docRef = userDocRef(uid);
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists() || !docSnap.data().username) {
+                nicknameModal.classList.remove('hidden');
+            } else {
+                const userData = docSnap.data();
+                usernameDisplay.textContent = userData.username;
+                if (userData.isVerified) {
+                    showApp();
+                } else {
+                    const adminDoc = await getDoc(configDocRef('admin'));
+                    if (adminDoc.exists() && adminDoc.data().adminUid === uid) {
+                        await updateDoc(docRef, { isVerified: true });
+                        showApp();
+                    } else {
+                        verificationModal.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+
+        nicknameForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = nicknameInput.value.trim();
+            if (username && currentUser) {
+                const docRef = userDocRef(currentUser.uid);
+                const adminDoc = await getDoc(configDocRef('admin'));
+                const isAdmin = adminDoc.exists() && adminDoc.data().adminUid === currentUser.uid;
+                
+                await setDoc(docRef, { username, isVerified: isAdmin }, { merge: true });
+                nicknameModal.classList.add('hidden');
+                usernameDisplay.textContent = username;
+
+                if (isAdmin) {
+                    showApp();
+                } else {
+                    verificationModal.classList.remove('hidden');
+                }
+            }
+        });
+
+        // --- UI LOGIC ---
+        function showApp() {
+            verificationModal.classList.add('hidden');
+            nicknameModal.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            appContainer.classList.add('flex');
+            listenForUsers();
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            return timestamp.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        copyIdButton.addEventListener('click', () => {
+            const textarea = document.createElement('textarea');
+            textarea.value = myUserId.textContent;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            copyIdButton.textContent = 'ID Tersalin!';
+            setTimeout(() => { copyIdButton.textContent = 'Salin ID'; }, 2000);
+        });
+
+        // --- CHAT LOGIC ---
+        function listenForUsers() {
+            const q = query(usersColRef);
+            onSnapshot(q, async (snapshot) => {
+                const adminDoc = await getDoc(configDocRef('admin'));
+                const adminUid = adminDoc.exists() ? adminDoc.data().adminUid : null;
+
+                userList.innerHTML = '';
+                verificationList.innerHTML = '<p class="text-xs text-slate-500 p-2">Tidak ada permintaan.</p>';
+                let hasVerificationRequests = false;
+
+                snapshot.forEach(doc => {
+                    const user = { id: doc.id, ...doc.data() };
+                    if (user.id === currentUser.uid) return;
+
+                    if (user.isVerified) {
+                        const userDiv = document.createElement('div');
+                        userDiv.className = 'p-4 border-b border-slate-200 hover:bg-slate-200 cursor-pointer';
+                        userDiv.textContent = user.username;
+                        userDiv.onclick = () => startChat(user.id, user.username);
+                        userList.appendChild(userDiv);
+                    } else if (currentUser.uid === adminUid) {
+                        if (!hasVerificationRequests) {
+                            verificationList.innerHTML = '';
+                            hasVerificationRequests = true;
+                        }
+                        const requestDiv = document.createElement('div');
+                        requestDiv.className = 'flex justify-between items-center bg-slate-100 p-2 rounded-lg';
+                        requestDiv.innerHTML = `<span class="text-sm text-slate-600">${user.username}</span>`;
+                        const verifyBtn = document.createElement('button');
+                        verifyBtn.textContent = 'Verifikasi';
+                        verifyBtn.className = 'bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600';
+                        verifyBtn.onclick = () => verifyUser(user.id);
+                        requestDiv.appendChild(verifyBtn);
+                        verificationList.appendChild(requestDiv);
+                    }
+                });
+
+                if (currentUser.uid === adminUid) {
+                    adminPanel.classList.remove('hidden');
+                }
+            });
+        }
+
+        async function verifyUser(userId) {
+            await updateDoc(userDocRef(userId), { isVerified: true });
+        }
+
+        async function startChat(otherUserId, otherUsername) {
+            chatWelcome.classList.add('hidden');
+            chatArea.classList.remove('hidden');
+            chatArea.classList.add('flex');
+            chattingWith.textContent = `Chat dengan ${otherUsername}`;
+
+            const members = [currentUser.uid, otherUserId].sort();
+            currentChatRoomId = members.join('_');
+            
+            const roomDocRef = doc(chatRoomsColRef, currentChatRoomId);
+            const roomSnap = await getDoc(roomDocRef);
+            if (!roomSnap.exists()) {
+                await setDoc(roomDocRef, { members });
+            }
+
+            listenForMessages(currentChatRoomId);
+        }
+
+        function listenForMessages(roomId) {
+            if (unsubscribeMessages) unsubscribeMessages();
+
+            const messagesCol = collection(db, chatRoomsColPath, roomId, 'messages');
+            const q = query(messagesCol);
+
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                const allMessages = [];
+                snapshot.forEach(doc => allMessages.push(doc.data()));
+                allMessages.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+                
+                messages.innerHTML = '';
+                allMessages.forEach(displayMessage);
+                messages.scrollTop = messages.scrollHeight;
+            });
+        }
+
+        function displayMessage(msgData) {
+            const isMyMessage = msgData.senderId === currentUser.uid;
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `flex items-end max-w-xs md:max-w-md p-3 rounded-2xl shadow ${isMyMessage ? 'bg-slate-700 text-white' : 'bg-white text-slate-800'}`;
+
+            const text = document.createElement('p');
+            text.textContent = msgData.text;
+            text.className = 'mr-3';
+
+            const time = document.createElement('span');
+            time.textContent = formatTimestamp(msgData.timestamp);
+            time.className = `text-xs ${isMyMessage ? 'text-slate-300' : 'text-slate-500'}`;
+
+            bubble.appendChild(text);
+            bubble.appendChild(time);
+            wrapper.appendChild(bubble);
+            messages.appendChild(wrapper);
+        }
+
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = messageInput.value.trim();
+            if (text && currentChatRoomId && currentUser) {
+                const messagesCol = collection(db, chatRoomsColPath, currentChatRoomId, 'messages');
+                await addDoc(messagesCol, {
+                    text,
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = '';
+            }
+        });
+    </script>
+    
+    <!-- PWA Service Worker Registration (Inline) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swContent = `
+                const CACHE_NAME = 'chat-privat-cache-v1';
+                const urlsToCache = ['.'];
+
+                self.addEventListener('install', event => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                console.log('Cache dibuka');
+                                return cache.addAll(urlsToCache);
+                            })
+                    );
+                });
+
+                self.addEventListener('fetch', event => {
+                    event.respondWith(
+                        caches.match(event.request)
+                            .then(response => {
+                                return response || fetch(event.request);
+                            })
+                    );
+                });
+            `;
+            const swBlob = new Blob([swContent], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register(swUrl)
+                    .then(registration => {
+                        console.log('Service Worker: Registered successfully from Blob');
+                    })
+                    .catch(error => {
+                        console.log('Service Worker: Registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
